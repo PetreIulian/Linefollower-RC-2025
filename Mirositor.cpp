@@ -43,6 +43,8 @@ double calculateError () {
     if (error < 0.1) {
       error = 0;
     }
+
+    return error;
 }
 
 void setup() {
