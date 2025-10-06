@@ -29,7 +29,7 @@ class DRI0040_Motor {
     const int speed = map(abs(speedPercentage), 0, 100, 0, 255);
     const bool forward = (speedPercentage < 0);
 
-    digitalWrite(Dir, (forward ^ invert) ? LOW : HIGH)
+    digitalWrite(Dir, (forward ^ invert) ? LOW : HIGH);
 
   }
 
@@ -37,5 +37,5 @@ class DRI0040_Motor {
     uint8_t Dir;
     uint8_t PWM;
     bool invert;
-}
+};
 #endif //DRI0040_MOTOR_H
