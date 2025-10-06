@@ -70,11 +70,25 @@ double PID(double error) {
 }
 
 void setup() {
+  serial.Begin(9600);
+  delay(4000);
 
+  for (int i = 0; i < SensorCount; i++) {
+    pinMode(sensorPins, INPUT);
+  }
 
+  Serial.println("Robot Activ");
 }
 
 void loop() {
+  double error = calculateError();
+  double correction = constrain(PID(error), -MAXSPEED, MAXSPEED);
 
+  double left = baseSpeed - correction;
+  double right = baseSpeed + correction;
 
+  motors.setM1speed(left);
+  motors.setM2speed(right);
+
+  delay(10);
 }
