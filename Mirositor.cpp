@@ -36,7 +36,7 @@ double calculateError () {
     }
 
     if (activeCount != 0) {
-      error = weightSum /(float)activeCount;
+      error = weightSum /(double)activeCount;
     }
 
     // adjustable field to toy with
@@ -45,6 +45,28 @@ double calculateError () {
     }
 
     return error;
+}
+
+double PID(double error) {
+   integral += error;
+   double derivative = error - lastError;
+   double PID = Kp * error + Kd * derivative + Ki * integral;
+   lastError = error;
+
+   return PID;
+
+/* maybe :))
+   const float alpha = 0.85;
+   const float dAlpha = 0.875;
+
+   integral += error;
+   double base_derivative = error - lastError
+   double derivative = dAlpha * base_derivative + (1 - Alpha) * last_derivative;
+   lastError = error;
+
+   double PID = (Kp * error) + (Kd * derivative) + (Ki * integral);
+   return PID;
+ */
 }
 
 void setup() {
