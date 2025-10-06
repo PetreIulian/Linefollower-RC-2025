@@ -13,7 +13,7 @@ class MotorShield {
   public:
     MotorShield(uint8_t M1Dir, uint8_t M1PWM,
                 uint8_t M2Dir, uint8_t M2PWM,
-                bool M1invert, bool M2invert = false)
+                bool M1invert = false, bool M2invert = false)
     : M1 (M1Dir, M1PWM, M1invert),
       M2 (M2Dir, M2PWM, M2invert) {}
 
