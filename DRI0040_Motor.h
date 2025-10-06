@@ -11,44 +11,31 @@
 
 class DRI0040_Motor {
   public:
-    DRI0040_Motor(uint8_t InPin1, uint8_t InPin2);
+    DRI0040_Motor(uint8_t Dir, uint8_t PWM, bool invert = false);
 
     void begin(){
-      pinMode(InPin1, OUTPUT);
-      pinMode(InPin2, OUTPUT);
+      pinMode(Dir, OUTPUT);
+      pinMode(PWM, OUTPUT);
+      stop();
     }
 
-  void forward(int speed) {
-    digitalWrite(InPin2, LOW);
-    analogWrite(InPin1, speed);
-  }
-
-  void reverse(int speed) {
-    digitalWrite(InPin1, LOW);
-    analogWrite(InPin2, speed);
-  }
-
   void stop() {
-  	digitalWrite(InPin1, LOW);
-    digitalWrite(InPin2, LOW);
+  	analogWrite(Dir, 0);
   }
 
   void set_speed(int speedPercentage) {
     speedPercentage = constrain(speedPercentage, -100, 100);
 
     const int speed = map(abs(speedPercentage), 0, 100, 0, 255);
+    const bool forward = (speedPercentage < 0);
 
-    if (speedPercentage > 0) {
-        forward(speed);
-    }
-    else {
-      reverse(-speed);
-    }
+    digitalWrite(Dir, (forward ^ invert) ? LOW : HIGH)
 
   }
 
   private:
-    uint8_t InPin1;
-    uint8_t InPin2;
+    uint8_t Dir;
+    uint8_t PWM;
+    bool invert;
 }
 #endif //DRI0040_MOTOR_H

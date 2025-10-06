@@ -9,12 +9,12 @@
 #include <Arduino.h>
 #include "DRI0040_Motor.h"
 
-class DRI0040_MotorShield {
+class MotorShield {
   public:
-    DRI0040_MotorShield(uint8_t M1In1, uint8_t M1In2,
-                        uint8_t M2In1, uint8_t M2In2)
-    :M1 (M1In1, M1In2),
-     M2 (M2In1, M2In2) {}
+    MotorShield(uint8_t M1Dir, uint8_t M1PWM, bool M1invert = false,
+                        uint8_t M2Dir, uint8_t M2PWM, bool M2invert = false)
+    :M1 (M1Dir, M1PWM),
+     M2 (M2Dir, M2PWM) {}
 
    void begin() {
      M1.begin();
@@ -33,7 +33,7 @@ class DRI0040_MotorShield {
      M1.stop();
      M2.stop();
    }
-   
+
   private: DRI0040_Motor M1;
            DRI0040_Motor M2;
 };
