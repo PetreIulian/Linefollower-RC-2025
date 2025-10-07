@@ -34,7 +34,7 @@ double calculateError () {
     short int activeCount = 0;
 
     for (int i = 0; i < SensorCount; i++) {
-      if(digitalRead(sensorPins)) {
+      if(digitalRead(sensorPins[SensorCount])) {
         weightSum += sensorWeights[i];
         activeCount++;
       }
@@ -83,21 +83,21 @@ void setup() {
   if(CALIBRATION_FLAG) {
     Serial.println("Starting calibration...");
 
-    for (uin16_t i = 0; i < 400; i++) {
+    for (unsigned int i = 0; i < 400; i++) {
       qtr.calibrate();
       Serial.print(i);
     }
 
-    for (uint4_t i = 0; i < SensorCount; i++) {
-      Serial.println("Minimum values of the sensors were:")
-      Serial.print(qtr.calibrateOn.minimum[i]);
+    for (unsigned short i = 0; i < SensorCount; i++) {
+      Serial.println("Minimum values of the sensors were:");
+      Serial.print(qtr.calibrationOn.minimum[i]);
       Serial.print(" ");
     }
 	Serial.println();
 
-    for (uint4_t i = 0; i < SensorCount; i++) {
-      Serial.println("Maximum values of the sensors were:")
-      Serial.print(qtr.calibrateOn.maximum[i]);
+    for (unsigned short i = 0; i < SensorCount; i++) {
+      Serial.println("Maximum values of the sensors were:");
+      Serial.print(qtr.calibrationOn.maximum[i]);
       Serial.print(" ");
     }
 	Serial.println();
@@ -107,7 +107,7 @@ void setup() {
   motors.begin();
 
   for (int i = 0; i < SensorCount; i++) {
-    pinMode(sensorPins, INPUT);
+    pinMode(sensorPins[i], INPUT);
   }
 
   Serial.println("Robot Activ");
@@ -118,7 +118,7 @@ void loop() {
     uint16_t SensorValue[SensorCount];
     uint16_t position = qtr.readLineBlack(SensorValue);
 
-    for (uint4_t i = 0; i < SensorCount; i++) {
+    for (unsigned short i = 0; i < SensorCount; i++) {
       Serial.print(SensorValue[i]);
       Serial.print("\t");
     }
