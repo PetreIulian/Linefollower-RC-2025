@@ -118,6 +118,7 @@ void loop() {
     uint16_t SensorValue[SensorCount];
     uint16_t position = qtr.readLineBlack(SensorValue);
 
+    loop_calibration:
     for (unsigned short i = 0; i < SensorCount; i++) {
       Serial.print(SensorValue[i]);
       Serial.print("\t");
@@ -126,8 +127,22 @@ void loop() {
 	Serial.println("------------------------");
     Serial.println(position);
     delay(300);
+    goto loop_calibration;
   }
 
+   if(DEBUG_FLAG) {
+    Serial.println("Debug has started:");
+
+    loop_debug:
+    Serial.println("Sensor inputs:");
+    for (unsigned short i = 0; i < SensorCount; i++) {
+      Serial.print(digitalRead(sensorPins[i]));
+      Serial.print("\t");
+    }
+    Serial.println("------------------");
+    delay(500);
+    goto loop_debug;
+  }
 
   double error = calculateError();
   double correction = constrain(PID(error), -MAXSPEED, MAXSPEED);
