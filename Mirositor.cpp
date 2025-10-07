@@ -1,5 +1,9 @@
 #include "MotorShield.h"
 #include "DRI0040_Motor.h"
+#include <QTRSensors.h>
+
+#define DEBUG_FLAG false
+#define CALIBRATION_FLAG false
 
 #define MAXSPEED 100
 
@@ -11,8 +15,9 @@
 MotorShield motors(M1DIR, M1PWM, M2DIR, M2PWM);
 
 //Sensor Config
+QTRSensors qtr;
 #define SensorCount 13
-const int sensorPins = {};
+const int sensorPins[SensorCount] = {};
 
 int sensorWeights[SensorCount] = {-600, -500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500, 600};
 
@@ -70,8 +75,36 @@ double PID(double error) {
 }
 
 void setup() {
-  serial.Begin(9600);
-  delay(4000);
+  if(DEBUG_FLAG || CALIBRATION_FLAG) {
+    Serial.begin(115200);
+    delay(4000);
+  }
+
+  if(CALIBRATION_FLAG) {
+    Serial.println("Starting calibration...");
+
+    for (uin16_t i = 0; i < 400; i++) {
+      qtr.calibrate();
+      Serial.print(i);
+    }
+
+    for (uint4_t i = 0; i < SensorCount; i++) {
+      Serial.println("Minimum values of the sensors were:")
+      Serial.print(qtr.calibrateOn.minimum[i]);
+      Serial.print(" ");
+    }
+	Serial.println();
+
+    for (uint4_t i = 0; i < SensorCount; i++) {
+      Serial.println("Maximum values of the sensors were:")
+      Serial.print(qtr.calibrateOn.maximum[i]);
+      Serial.print(" ");
+    }
+	Serial.println();
+    delay(2000);
+  }
+
+  motors.begin();
 
   for (int i = 0; i < SensorCount; i++) {
     pinMode(sensorPins, INPUT);
@@ -81,6 +114,21 @@ void setup() {
 }
 
 void loop() {
+  if(CALIBRATION_FLAG) {
+    uint16_t SensorValue[SensorCount];
+    uint16_t position = qtr.readLineBlack(SensorValue);
+
+    for (uint4_t i = 0; i < SensorCount; i++) {
+      Serial.print(SensorValue[i]);
+      Serial.print("\t");
+    }
+
+	Serial.println("------------------------");
+    Serial.println(position);
+    delay(300);
+  }
+
+
   double error = calculateError();
   double correction = constrain(PID(error), -MAXSPEED, MAXSPEED);
 
