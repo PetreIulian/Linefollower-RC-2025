@@ -1,9 +1,7 @@
 #include "MotorShield.h"
 #include "DRI0040_Motor.h"
-#include <QTRSensors.h>
 
-#define DEBUG_FLAG false
-#define CALIBRATION_FLAG false
+#define DEBUG_FLAG true
 
 #define MAXSPEED 100
 
@@ -14,10 +12,11 @@
 #define M2PWM  12
 MotorShield motors(M1DIR, M1PWM, M2DIR, M2PWM);
 
+bool robot_state = false;
+
 //Sensor Config
-QTRSensors qtr;
 #define SensorCount 13
-const int sensorPins[SensorCount] = {};
+const int sensorPins[SensorCount] = {19, 20, 32, 33, 36, 37, 38, 39, 21, 22, 5, 8, 25};
 
 int sensorWeights[SensorCount] = {-600, -500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500, 600};
 
@@ -74,34 +73,14 @@ double PID(double error) {
  */
 }
 
+void change_robot_state() {
+
+}
+
 void setup() {
-  if(DEBUG_FLAG || CALIBRATION_FLAG) {
+  if(DEBUG_FLAG) {
     Serial.begin(115200);
     delay(4000);
-  }
-
-  if(CALIBRATION_FLAG) {
-    Serial.println("Starting calibration...");
-
-    for (unsigned int i = 0; i < 400; i++) {
-      qtr.calibrate();
-      Serial.print(i);
-    }
-
-    for (unsigned short i = 0; i < SensorCount; i++) {
-      Serial.println("Minimum values of the sensors were:");
-      Serial.print(qtr.calibrationOn.minimum[i]);
-      Serial.print(" ");
-    }
-	Serial.println();
-
-    for (unsigned short i = 0; i < SensorCount; i++) {
-      Serial.println("Maximum values of the sensors were:");
-      Serial.print(qtr.calibrationOn.maximum[i]);
-      Serial.print(" ");
-    }
-	Serial.println();
-    delay(2000);
   }
 
   motors.begin();
@@ -114,35 +93,22 @@ void setup() {
 }
 
 void loop() {
-  if(CALIBRATION_FLAG) {
-    uint16_t SensorValue[SensorCount];
-    uint16_t position = qtr.readLineBlack(SensorValue);
-
-    loop_calibration:
-    for (unsigned short i = 0; i < SensorCount; i++) {
-      Serial.print(SensorValue[i]);
-      Serial.print("\t");
-    }
-
-	Serial.println("------------------------");
-    Serial.println(position);
-    delay(300);
-    goto loop_calibration;
-  }
 
    if(DEBUG_FLAG) {
     Serial.println("Debug has started:");
 
     loop_debug:
-    Serial.println("Sensor inputs:");
-    for (unsigned short i = 0; i < SensorCount; i++) {
+    Serial.println("\nSensor inputs:");
+    for (uint8_t i = 0; i < SensorCount; i++) {
       Serial.print(digitalRead(sensorPins[i]));
       Serial.print("\t");
     }
-    Serial.println("------------------");
-    delay(500);
+    Serial.print("\n-----------------------------------------------------------------------------------------------");
+    delay(2000);
     goto loop_debug;
   }
+
+  if(robot_state) {
 
   double error = calculateError();
   double correction = constrain(PID(error), -MAXSPEED, MAXSPEED);
@@ -154,4 +120,6 @@ void loop() {
   motors.setM2speed(right);
 
   delay(10);
+
+  }
 }
