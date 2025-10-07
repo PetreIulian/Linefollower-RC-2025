@@ -20,6 +20,10 @@ const int sensorPins[SensorCount] = {19, 20, 32, 33, 36, 37, 38, 39, 21, 22, 5, 
 
 int sensorWeights[SensorCount] = {-600, -500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500, 600};
 
+int sensorMin[SensorCount];
+int sensorMax[SensorCount];
+int sensorValues[SensorCount];
+
 //PID Config
 double Kp = 0;
 double Kd = 0;
@@ -77,6 +81,43 @@ void change_robot_state() {
 
 }
 
+/*maybe someday
+void calibrate(){
+   Serial.println("-----Sensor Calibration-----");
+
+  for (int i = 0; i < SensorCount; i++) {
+    sensorMin[i] = 4095;
+    sensorMax[i] = 0;
+  }
+
+  unsigned long startTime = millis();
+  while(millis() - startTime < 10000) {
+     for (int i = 0; i < SensorCount; i++) {
+      int value = analogRead(sensorPins[i]);
+      if (value < sensorMin[i]) sensorMin[i] = value;
+      if (value > sensorMax[i]) sensorMax[i] = value;
+    }
+  }
+  Serial.println("-----Calibration Complete-----");
+  for (int i = 0; i < SensorCount; i++) {
+    Serial.print("Sensor ");
+    Serial.print(i);
+    Serial.print(" -> Min: ");
+    Serial.print(sensorMin[i]);
+    Serial.print("  Max: ");
+    Serial.println(sensorMax[i]);
+  }
+}
+
+void readSensors() {
+  for (int i = 0; i < SensorCount; i++) {
+    int value = analogRead(sensorPins[i]);
+    int normalized = map(value, sensorMin[i], sensorMax[i], 0, 1000);
+    normalized = constrain(normalized, 0, 1000);
+    sensorValues[i] = normalized;
+  }
+}*/
+
 void setup() {
   if(DEBUG_FLAG) {
     Serial.begin(115200);
@@ -90,6 +131,7 @@ void setup() {
   }
 
   Serial.println("Robot Activ");
+
 }
 
 void loop() {
@@ -120,6 +162,6 @@ void loop() {
   motors.setM2speed(right);
 
   delay(10);
-
   }
+
 }
