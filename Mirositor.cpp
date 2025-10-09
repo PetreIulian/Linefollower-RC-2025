@@ -100,7 +100,7 @@ void setup() {
     pinMode(sensorPins[i], INPUT);
   }
 
-  Serial.println("Robot Activ");
+  Serial.println("Robot ON");
 
   if (CALIBRATION_FLAG) {
     Serial.begin(115200);
@@ -128,8 +128,8 @@ void loop() {
   motors.setM1speed(left);
   motors.setM2speed(right);
 
-  Serial.print("Eroare: "); Serial.print(error);
-  Serial.print("\tCorectie: "); Serial.print(correction);
+  Serial.print("Error: "); Serial.print(error);
+  Serial.print("\tCorection: "); Serial.print(correction);
   Serial.print("\tL: "); Serial.print(left);
   Serial.print("\tR: "); Serial.println(right);
 
