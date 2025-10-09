@@ -1,87 +1,98 @@
 #include "MotorShield.h"
 #include "DRI0040_Motor.h"
+#include "QTRSensors.h"
 
-#define DEBUG_FLAG true
+//Flags
+#define DEBUG_FLAG false
+#define CALIBRATION_FLAG true
+
+bool robot_state = true;
 
 #define MAXSPEED 100
+#define SensorCount 8
 
-//MotorShield
-#define M1DIR  13
-#define M1PWM  14
-#define M2DIR  15
-#define M2PWM  12
+//Motor Config
+#define M1DIR  19
+#define M1PWM  20
+#define M2DIR  32
+#define M2PWM  33
 MotorShield motors(M1DIR, M1PWM, M2DIR, M2PWM);
 
-bool robot_state = false;
-
 //Sensor Config
-#define SensorCount 13
-const int sensorPins[SensorCount] = {19, 20, 32, 33, 36, 37, 38, 39, 21, 22, 5, 8, 25};
+QTRSensors qtr;
+const uint8_t sensorPins[SensorCount] = {5, 8, 25, 26, 12, 15, 14, 13};
+uint16_t sensorValues[SensorCount];
 
-int sensorWeights[SensorCount] = {-600, -500, -400, -300, -200, -100, 0, 100, 200, 300, 400, 500, 600};
-
-//PID Config
-double Kp = 0;
-double Kd = 0;
+//PID values
+double Kp = 0.05;
+double Kd = 0.8;
 double Ki = 0;
 
+
 double baseSpeed = 25;
-double error = 0, lastError = 0, integral = 0;
+int lastError = 0;
+double integral = 0;
 
-double calculateError () {
-    double weightSum = 0;
-    short int activeCount = 0;
-
-    for (int i = 0; i < SensorCount; i++) {
-      if(digitalRead(sensorPins[SensorCount])) {
-        weightSum += sensorWeights[i];
-        activeCount++;
-      }
-    }
-
-    if (activeCount != 0) {
-      error = weightSum /(double)activeCount;
-    }
-
-    // adjustable field to toy with
-    if (error < 0.1) {
-      error = 0;
-    }
-
-    return error;
+int calculateError() {
+  int position = qtr.readLineBlack(sensorValues); // 0 (left) -> 7000 (right)
+  int error = position - 3500;
+  return error;
 }
 
-double PID(double error) {
-   integral += error;
-   double derivative = error - lastError;
-   double PID = Kp * error + Kd * derivative + Ki * integral;
-   lastError = error;
+//PID Function
+double PID(int error) {
+  integral += error;
+  double derivative = error - lastError;
+  lastError = error;
 
-   return PID;
-
-/* maybe :))
-   const float alpha = 0.85;
-   const float dAlpha = 0.875;
-
-   integral += error;
-   double base_derivative = error - lastError
-   double derivative = dAlpha * base_derivative + (1 - Alpha) * last_derivative;
-   lastError = error;
-
-   double PID = (Kp * error) + (Kd * derivative) + (Ki * integral);
-   return PID;
- */
+  double output = Kp * error + Ki * integral + Kd * derivative;
+  return output;
 }
 
-void change_robot_state() {
+//Calibration Function
+void calibrate() {
+  Serial.println("-----Calibration has started-----");
+  delay(1000);
 
+  for (uint16_t i = 0; i < 400; i++) {
+    qtr.calibrate();
+    delay(10);
+  }
+
+  Serial.println("-----Calibration Completed");
+
+  for (uint8_t i = 0; i < SensorCount; i++) {
+    Serial.print("Sensor ");
+    Serial.print(i);
+    Serial.print(": min=");
+    Serial.print(qtr.calibrationOn.minimum[i]);
+    Serial.print(" max=");
+    Serial.println(qtr.calibrationOn.maximum[i]);
+  }
+  delay(1000);
+}
+
+//Debug Function
+void debug() {
+  while (true) {
+    uint16_t position = qtr.readLineBlack(sensorValues);
+
+    for (uint8_t i = 0; i < SensorCount; i++) {
+      Serial.print(sensorValues[i]);
+      Serial.print("\t");
+    }
+
+    Serial.print("Pos: ");
+    Serial.println(position);
+    delay(400);
+  }
 }
 
 void setup() {
-  if(DEBUG_FLAG) {
-    Serial.begin(115200);
-    delay(4000);
-  }
+
+  qtr.setTypeRC();
+  qtr.setSensorPins(sensorPins, SensorCount);
+  delay(500);
 
   motors.begin();
 
@@ -90,36 +101,37 @@ void setup() {
   }
 
   Serial.println("Robot Activ");
+
+  if (CALIBRATION_FLAG) {
+    Serial.begin(115200);
+    calibrate();
+  }
+
+  if (DEBUG_FLAG) {
+    Serial.begin(115200);
+    debug();
+  }
 }
 
 void loop() {
+  if (!robot_state) return;
 
-   if(DEBUG_FLAG) {
-    Serial.println("Debug has started:");
-
-    loop_debug:
-    Serial.println("\nSensor inputs:");
-    for (uint8_t i = 0; i < SensorCount; i++) {
-      Serial.print(digitalRead(sensorPins[i]));
-      Serial.print("\t");
-    }
-    Serial.print("\n-----------------------------------------------------------------------------------------------");
-    delay(2000);
-    goto loop_debug;
-  }
-
-  if(robot_state) {
-
-  double error = calculateError();
+  int error = calculateError();
   double correction = constrain(PID(error), -MAXSPEED, MAXSPEED);
 
   double left = baseSpeed - correction;
   double right = baseSpeed + correction;
 
+  left = constrain(left, -MAXSPEED, MAXSPEED);
+  right = constrain(right, -MAXSPEED, MAXSPEED);
+
   motors.setM1speed(left);
   motors.setM2speed(right);
 
-  delay(10);
+  Serial.print("Eroare: "); Serial.print(error);
+  Serial.print("\tCorectie: "); Serial.print(correction);
+  Serial.print("\tL: "); Serial.print(left);
+  Serial.print("\tR: "); Serial.println(right);
 
-  }
+  delay(10);
 }

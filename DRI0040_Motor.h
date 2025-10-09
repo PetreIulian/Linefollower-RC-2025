@@ -24,11 +24,18 @@ public:
     speedPercentage = constrain(speedPercentage, -100, 100);
 
     const int speed = map(abs(speedPercentage), 0, 100, 0, 255);
-    const bool forward = (speedPercentage > 0);
+    const bool forward = (speedPercentage < 0);
+
+    int pwm = 0;
+        if (forward) {
+          pwm = speed;
+        } else {
+          pwm = 255 - speed;
+        }
 
     digitalWrite(Dir, (forward ^ invert) ? LOW : HIGH);
 
-    analogWrite(PWM, speed);
+    analogWrite(PWM, pwm);
   }
 
 private:
