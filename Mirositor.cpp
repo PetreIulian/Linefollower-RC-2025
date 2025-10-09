@@ -128,10 +128,14 @@ void loop() {
   motors.setM1speed(left);
   motors.setM2speed(right);
 
-  Serial.print("Error: "); Serial.print(error);
-  Serial.print("\tCorection: "); Serial.print(correction);
-  Serial.print("\tL: "); Serial.print(left);
-  Serial.print("\tR: "); Serial.println(right);
+  Serial.print("Error: ");
+  Serial.print(error);
+  Serial.print("\tCorection: ");
+  Serial.print(correction);
+  Serial.print("\tL: ");
+  Serial.print(left);
+  Serial.print("\tR: ");
+  Serial.println(right);
 
   delay(10);
 }
