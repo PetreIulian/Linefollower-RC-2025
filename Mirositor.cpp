@@ -7,6 +7,7 @@
 #define DEBUG_FLAG false
 #define CALIBRATION_FLAG true
 
+//IR Reciver Config
 bool robot_state = true;
 #define IR_PIN 36
 
