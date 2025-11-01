@@ -1,17 +1,16 @@
 #include "MotorShield.h"
 #include "DRI0040_Motor.h"
 #include "QTRSensors.h"
-#include <IRremote.h>
+#include "BluetoothSerial.h"
 
 //Flags
 #define DEBUG_FLAG false
 #define CALIBRATION_FLAG true
 
 bool robot_state = false;
-#define IR_PIN 36
 
-#define MAXSPEED 80
-#define MAX_OUTPUT 50
+#define MAXSPEED 90
+#define MAX_OUTPUT 60
 #define SensorCount 8
 
 //Motor Config
@@ -23,38 +22,41 @@ MotorShield motors(M1DIR, M1PWM, M2DIR, M2PWM);
 
 //Sensor Config
 QTRSensors qtr;
-const uint8_t sensorPins[SensorCount] = {5, 8, 25, 26, 12, 15, 14, 13};
+const uint8_t sensorPins[SensorCount] = {5, 8, 25, 26, 15, 12, 14, 13};
 uint16_t sensorValues[SensorCount];
 
 //PID values
-double KP = 0.01335; //0.125 0.13 lower this next time 0.001365
-double KD = 0; //17.5 17.45 0.475
-double KI = 0;
+double KP = 0.0119; // to do lower 0.012
+double KD = 0.17575; // to do higher 0.15
+double KI = 0.00092;
 
+unsigned long startTime = 0;
+unsigned long accelerationTime = 2000; 
 
-int baseSpeed = 50, setBaseSpeed = 50;
+int baseSpeed = 0, setBaseSpeed = 60;
 double line_position = 0;
 double lastError = 0;
 double integral = 0;
 double error = 0, error1 = 0, error2 = 0, error3 = 0, error4 = 0, error5 = 0, error6 = 0;
 
+BluetoothSerial SerialBT;
+
 void start_stop() {
-   if (IrReceiver.decode()) {
-        uint8_t cmd = IrReceiver.decodedIRData.command;
+  if (SerialBT.available()) {
+    char cmd = SerialBT.read();
 
-        if (cmd == 0x45) {
-            robot_state = true;
-        } else if (cmd == 0x46) {
-            robot_state = false;
-         }    
-
-        IrReceiver.resume();
-     }
+    if (cmd == 'S' || cmd == 's') {
+      robot_state = true;
+    } 
+    else if (cmd == 'P' || cmd == 'p') {
+      robot_state = false;
+    }
+  }
 }
 
 double calculateError() {
   line_position = qtr.readLineBlack(sensorValues); // 0 (left) -> 7000 (right)
-  error = 3500 - line_position;
+  error = 4250 - line_position;
   error6 = error5;
   error5 = error4;
   error4 = error3;
@@ -69,7 +71,6 @@ double PID(int error) {
   integral = error6 + error5 + error4 + error3 + error2 + error1 + error;
   double derivative = error - lastError;
   lastError = error;
-
   double output = KP * error + KD * derivative + KI * integral;
   return output;
 }
@@ -115,6 +116,10 @@ void debug() {
 
 void setup() {
   Serial.begin(115200);
+  while(!SerialBT.begin("ESP32_LineFollower")){
+
+  }
+
   qtr.setTypeRC();
   qtr.setSensorPins(sensorPins, SensorCount);
   delay(500);
@@ -126,49 +131,72 @@ void setup() {
   }
 
   Serial.println("Robot ON");
+  SerialBT.println("Bluetooth ready. Send 'S' to start or 'P' to stop.");
 
   if (CALIBRATION_FLAG && Serial) {
     calibrate(); 
-  } 
-  else if (CALIBRATION_FLAG) {
+  } else if (CALIBRATION_FLAG) {
     calibrate();
+    SerialBT.println("------Calibration Completed------");
   }
 
   if (DEBUG_FLAG) {
     Serial.begin(115200); 
     debug();
   }
-
-  IrReceiver.begin(IR_PIN, ENABLE_LED_FEEDBACK);
 }
 
 void loop() {
   start_stop();
 
-  if (robot_state) { 
+  if (startTime == 0 && robot_state) {
+    startTime = millis();
+  }
 
-    error = calculateError();
-    double correction = constrain(PID(error), -MAX_OUTPUT, MAX_OUTPUT);
+  unsigned long elapsedTime = millis() - startTime;
 
-    /*if((line_position > 0 && line_position <= 1000) || (line_position >= 6000 && line_position < 7000)) { // medium to tight turn
-      baseSpeed = 0.85 * baseSpeed;
-    }
-    else {
-      baseSpeed = setBaseSpeed;
-    }*/
+  if (elapsedTime <= accelerationTime) {
+    baseSpeed = map(elapsedTime, 0, accelerationTime, 0, setBaseSpeed);
+  }
 
-    double left = baseSpeed - correction;
-    double right = baseSpeed + correction;
+  error = calculateError();
+  double correction = 0;
 
-    left = constrain(left, 0, MAXSPEED);
-    right = constrain(right, 0, MAXSPEED);
+  correction = constrain(PID(error), -MAX_OUTPUT, MAX_OUTPUT);
+
+  double left = baseSpeed - correction;
+  double right = baseSpeed + correction;
+
+  left = constrain(left, 0, MAXSPEED);
+  right = constrain(right, 0, MAXSPEED);
+
+  if ((line_position > 1000 && line_position <= 2000) || (line_position >= 5000 && line_position < 6000)) {
+    baseSpeed = 0.85 * setBaseSpeed;
+  } else {
+    baseSpeed = setBaseSpeed;
+  }
+
+  if (robot_state) {
+    if (line_position <= 1000) {
+        left = -30;
+        right = 40;
+    } else if (line_position >= 6000) {
+        left = 40;
+        right = -30;
+    } /*else if (line_position <= 1500) {
+        left = -15;
+        right = 45;
+    } else if (line_position >= 5500) {
+        left = 45;
+        right = -15;
+    } */
 
     motors.setM1speed(left);
     motors.setM2speed(right);
 
-    if(Serial) {
+    if (Serial) {
       Serial.print("Error: "); Serial.print(error);
-      Serial.print("\tCorection: "); Serial.print(correction);
+      Serial.print("\tCorrection: "); Serial.print(correction);
       Serial.print("\tL: "); Serial.print(left);
       Serial.print("\tR: "); Serial.println(right);
     }
@@ -176,7 +204,8 @@ void loop() {
   } else {
     motors.setM1speed(0);
     motors.setM2speed(0);
+    startTime = 0;
   }
-  delay(10);
-    
+
+  delay(5);
 }
