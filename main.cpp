@@ -2,6 +2,7 @@
 #include "DRI0040_Motor.h"
 #include "QTRSensors.h"
 #include "BluetoothSerial.h"
+#include <EEPROM.h>
 
 //Flags
 #define DEBUG_FLAG false
@@ -10,7 +11,7 @@
 bool robot_state = false;
 
 #define MAXSPEED 90
-#define MAX_OUTPUT 60
+#define MAX_OUTPUT 40
 #define SensorCount 8
 
 //Motor Config
@@ -26,14 +27,14 @@ const uint8_t sensorPins[SensorCount] = {5, 8, 25, 26, 15, 12, 14, 13};
 uint16_t sensorValues[SensorCount];
 
 //PID values
-double KP = 0.0119; // to do lower 0.012
-double KD = 0.17575; // to do higher 0.15
-double KI = 0.00092;
+double KP = 0.01315; // to do lower
+double KD = 0.175; // to do higher
+double KI = 0.00085;
 
 unsigned long startTime = 0;
-unsigned long accelerationTime = 2000; 
+unsigned long accelerationTime = 3000; 
 
-int baseSpeed = 0, setBaseSpeed = 60;
+int baseSpeed = 0, setBaseSpeed = 40;
 double line_position = 0;
 double lastError = 0;
 double integral = 0;
@@ -77,7 +78,11 @@ double PID(int error) {
 
 //Calibration Function
 void calibrate() {
-  Serial.println("-----Calibration has started-----");
+  
+  if(Serial){
+    Serial.println("-----Calibration has started-----");
+  }
+
   delay(1000);
 
   for (uint16_t i = 0; i < 400; i++) {
@@ -85,16 +90,20 @@ void calibrate() {
     delay(10);
   }
 
-  Serial.println("-----Calibration Completed-----");
+  if(Serial){
+    Serial.println("-----Calibration Completed-----");
 
-  for (uint8_t i = 0; i < SensorCount; i++) {
-    Serial.print("Sensor ");
-    Serial.print(i);
-    Serial.print(": min=");
-    Serial.print(qtr.calibrationOn.minimum[i]);
-    Serial.print(" max=");
-    Serial.println(qtr.calibrationOn.maximum[i]);
+    for (uint8_t i = 0; i < SensorCount; i++) {
+      Serial.print("Sensor ");
+      Serial.print(i);
+      Serial.print(": min=");
+      Serial.print(qtr.calibrationOn.minimum[i]);
+      Serial.print(" max=");
+      Serial.println(qtr.calibrationOn.maximum[i]);
+   }
+
   }
+
   delay(1000);
 }
 
@@ -114,8 +123,45 @@ void debug() {
   }
 }
 
+//Function for saving the calibration on EEPROM
+void saveCalibration() {
+  int adrr = 0;
+  int minVal = 0;
+  int maxVal = 0;
+
+
+  for(int i = 0; i <= SensorCount; i++) {
+    minVal = qtr.calibrationOn.minimum[i];
+    maxVal = qtr.calibrationOn.maximum[i];
+
+    EEPROM.write(minVal, adrr);
+    adrr += sizeof(uint16_t);
+
+    EEPROM.write(maxVal, adrr);
+    adrr += sizeof(uint16_t); 
+  }
+
+  EEPROM.commit();
+}
+
+//Function for loading the calibration from EEPROM
+void loadCalibration() {
+  int adrr = 0;
+
+  for(int i = 0; i <= SensorCount; i++) {
+    qtr.calibrationOn.minimum[i] = EEPROM.read(adrr);
+    adrr += sizeof(uint16_t);
+
+    qtr.calibrationOn.maximum[i] = EEPROM.read(adrr);
+    adrr += sizeof(uint16_t);
+
+  }
+}
+
+
 void setup() {
-  Serial.begin(115200);
+  EEPROM.begin(524);
+
   while(!SerialBT.begin("ESP32_LineFollower")){
 
   }
@@ -133,11 +179,14 @@ void setup() {
   Serial.println("Robot ON");
   SerialBT.println("Bluetooth ready. Send 'S' to start or 'P' to stop.");
 
-  if (CALIBRATION_FLAG && Serial) {
+  if (CALIBRATION_FLAG) {
     calibrate(); 
-  } else if (CALIBRATION_FLAG) {
-    calibrate();
-    SerialBT.println("------Calibration Completed------");
+    saveCalibration();
+    SerialBT.println("------Calibration Saved------");
+  } 
+  else {
+    loadCalibration();
+    SerialBT.println("------Calibration Loaded------");
   }
 
   if (DEBUG_FLAG) {
@@ -163,34 +212,21 @@ void loop() {
   double correction = 0;
 
   correction = constrain(PID(error), -MAX_OUTPUT, MAX_OUTPUT);
-
+  
   double left = baseSpeed - correction;
   double right = baseSpeed + correction;
 
-  left = constrain(left, 0, MAXSPEED);
-  right = constrain(right, 0, MAXSPEED);
 
-  if ((line_position > 1000 && line_position <= 2000) || (line_position >= 5000 && line_position < 6000)) {
+  if ((line_position > 0 && line_position <= 1000) || (line_position >= 6000 && line_position < 7000)) {
     baseSpeed = 0.85 * setBaseSpeed;
   } else {
     baseSpeed = setBaseSpeed;
   }
 
-  if (robot_state) {
-    if (line_position <= 1000) {
-        left = -30;
-        right = 40;
-    } else if (line_position >= 6000) {
-        left = 40;
-        right = -30;
-    } /*else if (line_position <= 1500) {
-        left = -15;
-        right = 45;
-    } else if (line_position >= 5500) {
-        left = 45;
-        right = -15;
-    } */
+  left = constrain(left, 0, MAXSPEED);
+  right = constrain(right, 0, MAXSPEED);
 
+  if (robot_state) {
     motors.setM1speed(left);
     motors.setM2speed(right);
 
