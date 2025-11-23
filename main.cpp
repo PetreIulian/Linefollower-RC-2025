@@ -227,6 +227,21 @@ void loop() {
   right = constrain(right, 0, MAXSPEED);
 
   if (robot_state) {
+    /*
+     if (line_position <= 1000) {
+        left = -30;
+        right = 40;
+    } else if (line_position >= 6000) {
+        left = 40;
+        right = -30;
+    } else if (line_position <= 1500) {
+        left = -15;
+        right = 45;
+    } else if (line_position >= 5500) {
+        left = 45;
+        right = -15;
+    } */
+
     motors.setM1speed(left);
     motors.setM2speed(right);
 
